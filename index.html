@@ -1,0 +1,242 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pomodoro</title>
+<style>
+:root{color-scheme:dark;--focus:var(--accent,#7aa2ff);--brk:var(--ok,#4ade80);--long:var(--warn,#fbbf24)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg,#0f0f10);color:var(--text,#ececec);font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;padding:20px 18px 32px}
+.wrap{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.card{background:var(--panel,#18181a);border:1px solid var(--line,#2a2a2d);border-radius:18px;padding:20px}
+.modes{display:flex;gap:2px;background:var(--bg,#0f0f10);border:1px solid var(--line,#2a2a2d);border-radius:11px;padding:3px;margin:0 auto 6px;width:max-content;max-width:100%}
+.modes button{background:none;border:0;color:var(--text-2,#bbb);font:inherit;font-size:13px;padding:6px 13px;border-radius:8px;cursor:pointer;white-space:nowrap}
+.modes button.on{background:var(--raised,#232326);color:var(--text,#fff)}
+.timer{display:flex;flex-direction:column;align-items:center;padding:6px 0 4px}
+.ringbox{position:relative;width:min(260px,72vw);aspect-ratio:1;margin:12px 0 6px}
+.ringbox svg{width:100%;height:100%;transform:rotate(-90deg)}
+.track{stroke:var(--raised,#232326)}
+.prog{stroke:var(--mc);stroke-linecap:round;transition:stroke-dashoffset .25s linear,stroke .3s;filter:drop-shadow(0 0 10px color-mix(in srgb,var(--mc) 35%,transparent))}
+.centre{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.time{font:600 clamp(44px,13vw,62px)/1 ui-rounded,"SF Pro Rounded",-apple-system,system-ui,sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.sub{font-size:12px;color:var(--muted,#888);letter-spacing:.07em;text-transform:uppercase}
+.paused .time{opacity:.55}
+.controls{display:flex;align-items:center;gap:18px;margin-top:8px}
+.round{width:46px;height:46px;border-radius:50%;background:var(--raised,#232326);border:1px solid var(--line,#2a2a2d);color:var(--text-2,#ccc);display:grid;place-items:center;cursor:pointer;font-size:17px;transition:background .12s,transform .08s}
+.round:hover{background:var(--raised-2,#2c2c30);color:var(--text,#fff)}
+.round:active{transform:scale(.95)}
+.play{width:68px;height:68px;font-size:24px;background:var(--mc);border-color:transparent;color:#0b0b0c;box-shadow:0 6px 24px color-mix(in srgb,var(--mc) 35%,transparent)}
+.play:hover{background:var(--mc);color:#0b0b0c;filter:brightness(1.08)}
+.labelrow{margin-top:16px;width:100%}
+.labelrow input{width:100%;background:var(--bg,#0f0f10);border:1px solid var(--line,#2a2a2d);color:var(--text,#eee);border-radius:11px;padding:11px 14px;font:inherit;font-size:15px;text-align:center}
+.labelrow input:focus{outline:none;border-color:var(--mc)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:8px}
+.chip{background:none;border:1px solid var(--line,#2a2a2d);color:var(--text-2,#bbb);border-radius:999px;padding:3px 10px;font:inherit;font-size:12px;cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip:hover{color:var(--text,#fff);border-color:var(--mc)}
+.dots{display:flex;gap:6px;justify-content:center;margin-top:14px;flex-wrap:wrap}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--raised-2,#2c2c30)}
+.dot.on{background:var(--focus)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stat{background:var(--panel,#18181a);border:1px solid var(--line,#2a2a2d);border-radius:14px;padding:12px 14px}
+.stat b{display:block;font:600 22px/1.2 ui-rounded,"SF Pro Rounded",system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.stat span{font-size:11px;color:var(--muted,#888);text-transform:uppercase;letter-spacing:.07em}
+h3{font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted,#888);margin:0 0 12px;font-weight:600;display:flex;justify-content:space-between}
+h3 em{font-style:normal;text-transform:none;letter-spacing:0;color:var(--text-2,#bbb)}
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;align-items:end;height:110px}
+.bar{display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
+.bar i{display:block;width:100%;max-width:30px;border-radius:6px 6px 3px 3px;background:color-mix(in srgb,var(--focus) 45%,var(--raised,#232326));min-height:3px;transition:height .3s}
+.bar.today i{background:var(--focus)}
+.bar small{font-size:11px;color:var(--muted,#888)}
+.bar.today small{color:var(--text,#fff)}
+.log{display:flex;flex-direction:column}
+.entry{display:flex;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--line,#2a2a2d)}
+.entry:first-child{border-top:0}
+.entry .t{font-variant-numeric:tabular-nums;color:var(--muted,#888);font-size:12px;width:44px}
+.entry .l{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.entry .m{font-variant-numeric:tabular-nums;color:var(--text-2,#bbb);font-size:12px}
+.x{background:none;border:0;color:var(--muted,#888);cursor:pointer;padding:2px 5px;border-radius:6px;opacity:0;transition:opacity .1s}
+.entry:hover .x{opacity:1}
+.x:hover{color:var(--text,#fff);background:var(--raised,#232326)}
+.empty{color:var(--muted,#888);font-size:13px;text-align:center;padding:6px 0}
+details summary{cursor:pointer;list-style:none;color:var(--text-2,#bbb);font-size:13px;display:flex;align-items:center;gap:8px}
+details summary::-webkit-details-marker{display:none}
+details[open] summary{margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px 14px}
+.field{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;color:var(--text-2,#ccc)}
+.field input[type=number]{width:64px;background:var(--bg,#0f0f10);border:1px solid var(--line,#2a2a2d);color:var(--text,#eee);border-radius:8px;padding:6px 8px;font:inherit;text-align:right}
+.toggle{appearance:none;width:34px;height:20px;border-radius:999px;background:var(--raised-2,#2c2c30);position:relative;cursor:pointer;transition:background .15s;flex:none;margin:0}
+.toggle::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s}
+.toggle:checked{background:var(--focus)}
+.toggle:checked::after{left:16px}
+.keys{font-size:12px;color:var(--muted,#888);text-align:center}
+kbd{font:inherit;background:var(--raised,#232326);border:1px solid var(--line,#2a2a2d);border-radius:5px;padding:0 5px}
+@media (max-width:440px){.grid{grid-template-columns:1fr}.stats{gap:8px}.stat{padding:10px}}
+</style></head>
+<body><div class="wrap">
+<section class="card timer" id="timerCard">
+  <div class="modes" id="modes">
+    <button data-m="focus">Focus</button><button data-m="short">Short break</button><button data-m="long">Long break</button>
+  </div>
+  <div class="ringbox">
+    <svg viewBox="0 0 120 120"><circle class="track" cx="60" cy="60" r="54" fill="none" stroke-width="6"/>
+    <circle class="prog" id="prog" cx="60" cy="60" r="54" fill="none" stroke-width="6"/></svg>
+    <div class="centre"><div class="time" id="time">25:00</div><div class="sub" id="sub">Focus</div></div>
+  </div>
+  <div class="controls">
+    <button class="round" id="reset" title="Reset (R)">↺</button>
+    <button class="round play" id="play" title="Start / pause (Space)">▶</button>
+    <button class="round" id="skip" title="Skip (S)">⏭</button>
+  </div>
+  <div class="labelrow"><input id="label" maxlength="80" placeholder="What are you working on?"><div class="chips" id="chips"></div></div>
+  <div class="dots" id="dots"></div>
+</section>
+<section class="stats" id="stats"></section>
+<section class="card"><h3>This week <em id="weekTotal"></em></h3><div class="week" id="week"></div></section>
+<section class="card"><h3>Today’s sessions</h3><div class="log" id="log"></div></section>
+<section class="card"><details id="settingsBox"><summary>⚙︎ Settings</summary><div class="grid" id="settings"></div></details></section>
+<div class="keys"><kbd>Space</kbd> start / pause · <kbd>R</kbd> reset · <kbd>S</kbd> skip</div>
+</div>
+<script>
+const DEF={focus:25,short:5,long:15,every:4,autoBreak:true,autoFocus:false,sound:true,goal:8};
+const NAMES={focus:"Focus",short:"Short break",long:"Long break"};
+const COLORS={focus:"var(--focus)",short:"var(--brk)",long:"var(--long)"};
+const mem={};
+const D=window.duet?duet.data:{get:async k=>mem[k],set:async(k,v)=>{mem[k]=v},all:async()=>({...mem})};
+const toast=m=>{try{window.duet?duet.toast(m):console.log(m)}catch(e){}};
+let settings={...DEF},timer={mode:"focus",status:"idle",endsAt:0,remaining:0,cycle:0,label:""},log=[];
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pad=n=>String(n).padStart(2,"0");
+const dayKey=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const today=()=>dayKey(new Date());
+const dur=m=>Math.max(1,+settings[m]||DEF[m])*60000;
+const remaining=()=>timer.status==="running"?Math.max(0,timer.endsAt-Date.now()):timer.status==="paused"?timer.remaining:dur(timer.mode);
+const fmt=ms=>{const s=Math.ceil(ms/1000);return `${pad(Math.floor(s/60))}:${pad(s%60)}`};
+const hm=m=>m>=60?`${Math.floor(m/60)}h ${m%60?m%60+"m":""}`.trim():`${m}m`;
+const saveTimer=()=>D.set("timer",timer);
+
+// sound: soft three-note chime
+let ctx;
+function chime(kind){
+  if(!settings.sound)return;
+  try{ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();
+    const notes=kind==="focus"?[659.25,783.99,1046.5]:[783.99,659.25,523.25];
+    notes.forEach((f,i)=>{const o=ctx.createOscillator(),g=ctx.createGain(),t=ctx.currentTime+i*.18;
+      o.type="sine";o.frequency.value=f;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.18,t+.02);
+      g.gain.exponentialRampToValueAtTime(.001,t+.9);o.connect(g).connect(ctx.destination);o.start(t);o.stop(t+1)});
+  }catch(e){}
+}
+
+function start(){
+  try{ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();ctx.resume()}catch(e){}
+  const left=timer.status==="paused"?timer.remaining:dur(timer.mode);
+  timer={...timer,status:"running",endsAt:Date.now()+left,remaining:0};saveTimer();render();
+}
+function pause(){timer={...timer,status:"paused",remaining:Math.max(0,timer.endsAt-Date.now())};saveTimer();render()}
+function reset(){timer={...timer,status:"idle",remaining:0,endsAt:0};saveTimer();render()}
+function nextMode(afterFocus){
+  if(timer.mode!=="focus")return "focus";
+  return afterFocus%Math.max(1,+settings.every||4)===0?"long":"short";
+}
+function setMode(m,autostart){
+  timer={...timer,mode:m,status:autostart?"running":"idle",endsAt:autostart?Date.now()+dur(m):0,remaining:0};
+}
+function skip(){
+  const cyc=timer.mode==="focus"?timer.cycle+1:timer.cycle;
+  setMode(nextMode(cyc),false);saveTimer();render();
+}
+let completing=false;
+async function complete(silent){
+  if(completing)return;completing=true;
+  const was=timer.mode,endedAt=timer.endsAt;
+  if(was==="focus"){
+    if(!log.some(l=>l.id===endedAt)){
+      log=[...log,{id:endedAt,date:dayKey(new Date(endedAt)),end:endedAt,mins:Math.round(dur("focus")/60000),label:timer.label||""}].slice(-1000);
+      await D.set("log",log);
+    }
+    timer.cycle=(timer.cycle||0)+1;
+  }
+  const nm=nextMode(timer.cycle);
+  const auto=!silent&&(nm==="focus"?settings.autoFocus:settings.autoBreak);
+  setMode(nm,auto);
+  if(nm==="focus"&&timer.cycle%Math.max(1,+settings.every||4)===0&&was==="long")timer.cycle=0;
+  await saveTimer();
+  if(!silent){chime(was);toast(was==="focus"?`Nice. Focus done, ${NAMES[nm].toLowerCase()} ${auto?"started":"next"}.`:"Break over. Back to it.")}
+  completing=false;render();
+}
+
+function render(){
+  const mc=COLORS[timer.mode];
+  document.body.style.setProperty("--mc",mc);
+  document.querySelectorAll("#modes button").forEach(b=>b.classList.toggle("on",b.dataset.m===timer.mode));
+  $("timerCard").classList.toggle("paused",timer.status==="paused");
+  $("play").textContent=timer.status==="running"?"❚❚":"▶";
+  const every=Math.max(1,+settings.every||4),pos=(timer.cycle%every)+1;
+  $("sub").textContent=timer.status==="paused"?"Paused":timer.mode==="focus"?`Focus · ${pos} of ${every}`:NAMES[timer.mode];
+  if(document.activeElement!==$("label"))$("label").value=timer.label||"";
+  // recent labels
+  const seen=[];for(let i=log.length-1;i>=0&&seen.length<5;i--){const l=log[i].label;if(l&&!seen.includes(l)&&l!==timer.label)seen.push(l)}
+  $("chips").innerHTML=seen.map(l=>`<button class="chip" data-label="${esc(l)}">${esc(l)}</button>`).join("");
+  // today
+  const t=log.filter(l=>l.date===today()),mins=t.reduce((a,l)=>a+l.mins,0),goal=Math.max(1,+settings.goal||8);
+  $("dots").innerHTML=Array.from({length:Math.max(goal,t.length)},(_,i)=>`<span class="dot ${i<t.length?"on":""}"></span>`).join("");
+  // streak
+  const days=new Set(log.map(l=>l.date));let streak=0,d=new Date();
+  if(!days.has(dayKey(d)))d.setDate(d.getDate()-1);
+  while(days.has(dayKey(d))){streak++;d.setDate(d.getDate()-1)}
+  $("stats").innerHTML=`<div class="stat"><b>${hm(mins)}</b><span>Focused today</span></div>
+    <div class="stat"><b>${t.length}<small style="font-size:14px;color:var(--muted)"> / ${goal}</small></b><span>Sessions</span></div>
+    <div class="stat"><b>${streak}${streak?" 🔥":""}</b><span>Day streak</span></div>`;
+  // week
+  const week=[];for(let i=6;i>=0;i--){const x=new Date();x.setDate(x.getDate()-i);const k=dayKey(x);
+    week.push({k,lbl:x.toLocaleDateString(undefined,{weekday:"narrow"}),m:log.filter(l=>l.date===k).reduce((a,l)=>a+l.mins,0)})}
+  const max=Math.max(60,...week.map(w=>w.m));
+  $("week").innerHTML=week.map(w=>`<div class="bar ${w.k===today()?"today":""}" title="${w.m} min"><i style="height:${Math.max(3,w.m/max*82)}%"></i><small>${w.lbl}</small></div>`).join("");
+  $("weekTotal").textContent=hm(week.reduce((a,w)=>a+w.m,0))+" focused";
+  // log
+  $("log").innerHTML=t.length?t.slice().reverse().map(l=>{const e=new Date(l.end);
+    return `<div class="entry"><span class="t">${pad(e.getHours())}:${pad(e.getMinutes())}</span><span class="l">${l.label?esc(l.label):'<span style="color:var(--muted)">Untitled focus</span>'}</span><span class="m">${l.mins}m</span><button class="x" data-del="${l.id}" title="Remove">✕</button></div>`}).join("")
+    :`<div class="empty">No sessions yet today. Hit ▶ to start one.</div>`;
+  renderSettings();tick();
+}
+let settingsDrawn="";
+function renderSettings(){
+  const sig=JSON.stringify(settings);if(sig===settingsDrawn&&$("settings").innerHTML)return;settingsDrawn=sig;
+  const num=(k,l,min,max)=>`<label class="field">${l}<input type="number" data-s="${k}" min="${min}" max="${max}" value="${settings[k]}"></label>`;
+  const tog=(k,l)=>`<label class="field">${l}<input type="checkbox" class="toggle" data-s="${k}" ${settings[k]?"checked":""}></label>`;
+  $("settings").innerHTML=num("focus","Focus (min)",1,180)+num("short","Short break (min)",1,60)+num("long","Long break (min)",1,90)+
+    num("every","Long break every",1,12)+num("goal","Daily goal (sessions)",1,24)+tog("sound","Chime when done")+
+    tog("autoBreak","Auto-start breaks")+tog("autoFocus","Auto-start focus");
+}
+function tick(){
+  const r=remaining(),total=timer.status==="paused"||timer.status==="running"?dur(timer.mode):dur(timer.mode);
+  $("time").textContent=fmt(r);
+  const C=2*Math.PI*54,p=$("prog");p.style.strokeDasharray=C;p.style.strokeDashoffset=C*(1-Math.min(1,r/total));
+  if(timer.status==="running"&&r<=0)complete(Date.now()-timer.endsAt>60000);
+}
+
+$("modes").onclick=e=>{const m=e.target.dataset.m;if(!m||m===timer.mode&&timer.status==="idle")return;setMode(m,false);saveTimer();render()};
+$("play").onclick=()=>timer.status==="running"?pause():start();
+$("reset").onclick=reset;$("skip").onclick=skip;
+let lt;$("label").oninput=e=>{timer.label=e.target.value;clearTimeout(lt);lt=setTimeout(saveTimer,400)};
+$("label").onkeydown=e=>{if(e.key==="Enter"){e.target.blur();if(timer.status!=="running")start()}};
+$("chips").onclick=e=>{const l=e.target.dataset.label;if(l!=null){timer.label=l;saveTimer();render()}};
+$("log").onclick=async e=>{const id=e.target.dataset.del;if(!id)return;log=log.filter(l=>String(l.id)!==id);await D.set("log",log);render()};
+$("settings").onchange=async e=>{const k=e.target.dataset.s;if(!k)return;
+  settings={...settings,[k]:e.target.type==="checkbox"?e.target.checked:Math.min(+e.target.max,Math.max(+e.target.min,parseInt(e.target.value)||DEF[k]))};
+  settingsDrawn="";await D.set("settings",settings);render()};
+document.addEventListener("keydown",e=>{
+  if(/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))return;
+  if(e.code==="Space"){e.preventDefault();$("play").click()}
+  else if(e.key.toLowerCase()==="r")reset();else if(e.key.toLowerCase()==="s")skip();
+});
+
+function load(all){
+  if(!all)return;settings={...DEF,...(all.settings||{})};
+  if(all.timer)timer={...timer,...all.timer};log=Array.isArray(all.log)?all.log:[];
+}
+(async()=>{
+  try{load(await D.all())}catch(e){}
+  render();setInterval(tick,250);
+  if(window.duet&&duet.onChange)duet.onChange(all=>{load(all);render()});
+  let last=today();setInterval(()=>{if(today()!==last){last=today();render()}},60000);
+})();
+</script></body></html>

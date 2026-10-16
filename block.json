@@ -1,0 +1,6 @@
+{
+  "name": "Pomodoro",
+  "icon": "🍅",
+  "description": "A focus timer with breaks, task labels, a daily goal, a streak and a week of stats. Keeps running if you close it or switch chats.",
+  "duet": 1
+}
